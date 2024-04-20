@@ -1,120 +1,43 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
 import os
+import requests
+import zipfile
 
-# Function to perform holdout with 20 runs
-def holdout_with_20_runs(X, y, clf, test_size=0.3, random_state=None):
-    accs = []
-    conf_matrices = []
-    for _ in range(20):
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
-        acc, conf_matrix = evaluate_classifier(clf, X_train, X_test, y_train, y_test)
-        accs.append(acc)
-        conf_matrices.append(conf_matrix)
-    accs = np.array(accs)
-    mean_acc = np.mean(accs)
-    std_acc = np.std(accs)
-    best_idx = np.argmax(accs)
-    best_conf_matrix = conf_matrices[best_idx]
-    return mean_acc, std_acc, best_idx + 1, best_conf_matrix
-
-
-# Function to calculate accuracy
-def accuracy_score(y_true, y_pred):
-    return np.mean(y_true == y_pred)
-
-
-# Function to calculate confusion matrix
-def confusion_matrix(y_true, y_pred, labels):
-    matrix = np.zeros((len(labels), len(labels)), dtype=int)
-    for i in range(len(labels)):
-        for j in range(len(labels)):
-            matrix[i, j] = np.sum((y_true == labels[i]) & (y_pred == labels[j]))
-    return matrix
-
-def train_test_split(X, y, test_size=0.3, random_state=None):
-    if random_state:
-        np.random.seed(random_state)
-    n_samples = X.shape[0]
-    n_test_samples = int(n_samples * test_size)
-    indices = np.random.permutation(n_samples)
-    test_indices = indices[:n_test_samples]
-    train_indices = indices[n_test_samples:]
-    X_train, X_test = X[train_indices], X[test_indices]
-    y_train, y_test = y[train_indices], y[test_indices]
-    return X_train, X_test, y_train, y_test
-
-
-
-
-# Define a função para carregar o conjunto de dados Dermatology
-def load_dermatology_uci():
-    # Obtém o diretório atual do script
-    script_dir = os.path.dirname(__file__)
-
-    # Caminho para o arquivo 'dermatology.data' dentro da pasta 'dados'
-    data_file = os.path.join(script_dir, "dados", "dermatology.data")
-
-
-    column_names = ['erythema', 'scaling', 'definite_borders', 'itching', 'koebner_phenomenon', 'polygonal_papules', 'follicular_papules',
-                    'oral_mucosal_involvement', 'knee_and_elbow_involvement', 'scalp_involvement', 'family_history',
-                    'melanin_incontinence', 'eosinophils_in_the_infiltrate', 'PNL_infiltrate', 'fibrosis_of_the_papillary_dermis', 'exocytosis',
-                    'acanthosis', 'hyperkeratosis', 'parakeratosis', 'clubbing_of_the_rete_ridges', 'elongation_of_the_rete_ridges', 'thinning_of_the_suprapapillary_epidermis', 'spongiform_pustule', 'munro_microabcess', 'focal_hypergranulosis', 'disappearance_of_the_granular_layer', 'vacuolisation_and_damage_of_basal_layer', 'spongiosis', 'saw-tooth_appearance_of_retes', 'follicular_horn_plug', 'erifollicular_parakeratosis', 'inflammatory_mononuclear_inflitrate', 'band-like_infiltrate', 'Age', 'class']
-    
-    # Carrega os dados
-    dermatology_data = pd.read_csv(data_file, header=None, names=column_names)
-   
-
-
-
-    # Converter colunas não numéricas para numéricas
-    dermatology_data = dermatology_data.apply(pd.to_numeric, errors='coerce')
-    
-    # Remover linhas e colunas com valores ausentes
-    dermatology_data.dropna(axis=0, how='any', inplace=True)
-    dermatology_data.dropna(axis=1, how='any', inplace=True)
-    
-    # Separar características (X) e alvo (y)
-    X = dermatology_data.drop(columns=['class']).values
-    y = dermatology_data['class'].values
-    
-    return X, y
-
-# Carregar dados Dermatology
-X, y = load_dermatology_uci()
-#
-## Standardize the features
-X_mean = np.mean(X, axis=0)
-X_std = np.std(X, axis=0)
-X_standardized = (X - X_mean) / X_std
-
-# Define a função para avaliar o classificador
-def evaluate_classifier(classifier, X_train, X_test, y_train, y_test):
-    classifier.fit(X_train, y_train)
-    y_pred = classifier.predict(X_test)
-    acc = accuracy_score(y_test, y_pred)
-    conf_matrix = confusion_matrix(y_test, y_pred, labels=np.unique(y))
-    return acc, conf_matrix
-
-# Define a função para realizar holdout com 20 execuções
-def holdout_with_20_runs(X, y, clf, test_size=0.3, random_state=None):
-    accs = []
-    conf_matrices = []
-    for _ in range(20):
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
-        acc, conf_matrix = evaluate_classifier(clf, X_train, X_test, y_train, y_test)
-        accs.append(acc)
-        conf_matrices.append(conf_matrix)
-    accs = np.array(accs)
-    mean_acc = np.mean(accs)
-    std_acc = np.std(accs)
-    best_idx = np.argmax(accs)
-    best_conf_matrix = conf_matrices[best_idx]
-    return mean_acc, std_acc, best_idx + 1, best_conf_matrix
-
+#############################################
+# Definição da classe GaussianNB
 # Define o classificador KNN
+# DMC
+# naive bayes
+
+# Implementação do classificador Naive Bayes
+class NaiveBayes:
+    def fit(self, X, y):
+        self.classes = np.unique(y)
+        self.parameters = {}
+        for c in self.classes:
+            X_c = X[y == c]
+            self.parameters[c] = {
+                "mean": X_c.mean(axis=0),
+                "std": X_c.std(axis=0) + 1e-10  # Adicionando um pequeno valor para evitar divisão por zero
+            }
+
+    def _pdf(self, X, mean, std):
+        return np.exp(-0.5 * ((X - mean) / std) ** 2) / (np.sqrt(2 * np.pi) * std)
+
+    def _predict_class(self, x):
+        posteriors = []
+        for c in self.classes:
+            prior = len(X_train[y_train == c]) / len(X_train)
+            likelihood = np.sum(np.log(self._pdf(x, self.parameters[c]["mean"], self.parameters[c]["std"])))
+            posterior = prior + likelihood
+            posteriors.append(posterior)
+        return self.classes[np.argmax(posteriors)]
+
+    def predict(self, X):
+        y_pred = [self._predict_class(x) for x in X]
+        return np.array(y_pred)
+
 class KNN:
     def __init__(self, k=5):
         self.k = k
@@ -186,12 +109,176 @@ naive_bayes_classifier = GaussianNB()
 ## Definir os classificadores em um dicionário
 classifiers = {"KNN": knn_classifier, "DMC": dmc_classifier, "Naive Bayes": naive_bayes_classifier}
 
-# Executar avaliação para cada classificador usando holdout com 20 execuções
-for clf_name, clf in classifiers.items():
-    print(f"\nClassifier: {clf_name}")
-    mean_acc, std_acc, best_idx, best_conf_matrix = holdout_with_20_runs(X_standardized, y, clf, test_size=0.3, random_state=42)
-    print(f"Mean Accuracy: {mean_acc}")
-    print(f"Standard Deviation: {std_acc:.10f}")
-    print(f"Best Execution: {best_idx}")
-    print("Confusion Matrix:")
-    print(best_conf_matrix)
+def multivariate_gaussian_pdf(x, mean, cov):
+    n = len(mean)
+    det_cov = np.linalg.det(cov)
+    inv_cov = np.linalg.inv(cov)
+    if len(x.shape) == 1:
+        x = x.reshape(1, -1)
+    if len(mean.shape) == 1:
+        mean = mean.reshape(1, -1)
+    diff = x - mean
+    exponent = -0.5 * np.sum(np.dot(diff, inv_cov) * diff, axis=1)
+    coeff = 1 / ((2 * np.pi) ** (n / 2) * det_cov ** 0.5)
+    return coeff * np.exp(exponent)
+###################################
+
+
+
+
+# Função para calcular a acurácia
+def accuracy_score(y_true, y_pred):
+    return np.mean(y_true == y_pred)
+
+# Função para calcular a matriz de confusão
+def confusion_matrix(y_true, y_pred):
+    classes = np.unique(y_true)
+    num_classes = len(classes)
+    matrix = np.zeros((num_classes, num_classes), dtype=int)
+    for i in range(num_classes):
+        for j in range(num_classes):
+            matrix[i, j] = np.sum((y_true == classes[i]) & (y_pred == classes[j]))
+    return matrix
+
+# Função para carregar o conjunto de dados Iris do repositório UCI
+def load_iris_uci():
+    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"
+    columns = ['sepal length', 'sepal width', 'petal length', 'petal width', 'class']
+    iris_data = pd.read_csv(url, names=columns)
+    X = iris_data.iloc[:, :-1].values
+    y = iris_data.iloc[:, -1].replace({'Iris-setosa': 0, 'Iris-versicolor': 1, 'Iris-virginica': 2}).values
+    return X, y
+
+# Função para separar os dados em conjunto de treinamento e teste
+def train_test_split(X, y, test_size=0.3, random_state=None):
+    if random_state:
+        np.random.seed(random_state)
+    indices = np.arange(len(X))
+    np.random.shuffle(indices)
+    test_samples = int(len(X) * test_size)
+    X_train = X[indices[:-test_samples]]
+    X_test = X[indices[-test_samples:]]
+    y_train = y[indices[:-test_samples]]
+    y_test = y[indices[-test_samples:]]
+    return X_train, X_test, y_train, y_test
+
+
+
+
+
+def load_vertebral_column_uci():
+    # URL do arquivo ZIP
+    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00212/vertebral_column_data.zip"
+    # Caminho local para salvar o arquivo ZIP
+    zip_path = "dados\vertebral_column_data.zip"
+    # Caminho local para o arquivo de dados extraído
+    data_path = "dados\column_3C.dat"
+
+    # Baixar o arquivo ZIP se ainda não foi baixado
+    if not os.path.exists(zip_path):
+        r = requests.get(url)
+        with open(zip_path, "wb") as f:
+            f.write(r.content)
+
+    # Extrair o arquivo de dados do ZIP se ainda não foi extraído
+    if not os.path.exists(data_path):
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall()
+
+    # Ler o arquivo de dados
+    column_names = ['pelvic_incidence', 'pelvic_tilt', 'lumbar_lordosis_angle', 'sacral_slope', 'pelvic_radius', 'degree_spondylolisthesis', 'class']
+    vertebral_data = pd.read_csv(data_path, header=None, sep=' ', names=column_names)
+    X = vertebral_data.iloc[:, :-1].values
+    y = vertebral_data.iloc[:, -1].replace({'DH': 0, 'SL': 1, 'NO': 2}).values
+
+    return X, y
+
+
+def load_dermatology_uci():
+    # URL do arquivo ZIP
+    url = "https://archive.ics.uci.edu/static/public/33/dermatology.zip"
+    # Caminho local para salvar o arquivo ZIP
+    zip_path = "dados\dermatology.zip"
+    # Caminho local para o arquivo de dados extraído
+    data_path = "dados\dermatology.dat"
+
+    # Baixar o arquivo ZIP se ainda não foi baixado
+    if not os.path.exists(zip_path):
+        r = requests.get(url)
+        with open(zip_path, "wb") as f:
+            f.write(r.content)
+
+    # Extrair o arquivo de dados do ZIP se ainda não foi extraído
+    if not os.path.exists(data_path):
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall()
+
+    # Ler o arquivo de dados
+    column_names = [ 'erythema','scaling','definite_borders','itching','koebner_phenomenon','polygonal_papules','follicular_papules'
+,'oral_mucosal_involvement','knee_and_elbow_involvement','scalp_involvement','family_history',
+'melanin_incontinence','eosinophils_in_the_infiltrate','PNL_infiltrate','fibrosis_of_the_papillary_dermis','exocytosis',
+'acanthosis','hyperkeratosis','parakeratosis','clubbing_of_the_rete_ridges','elongation_of_the_rete_ridges','thinning_of_the suprapapillary_epidermis','spongiform_pustule','munro_microabcess','focal_hypergranulosis','disappearance_of_the_granular_layer','vacuolisation_and_damage_of_basal_layer','spongiosis','saw-tooth_appearance_of_retes','follicular_horn_plug','erifollicular_parakeratosis','inflammatory_monoluclear_inflitrate','band-like_infiltrate','Age','class']
+    vertebral_data = pd.read_csv(data_path, header=None, sep=' ', names=column_names)
+    X = vertebral_data.iloc[:, :-1].values
+    y = vertebral_data.iloc[:, -1].values
+
+    return X, y
+
+
+
+
+
+
+#### BREAST_CANCER ######
+
+from ucimlrepo import fetch_ucirepo 
+  
+# fetch dataset 
+breast_cancer = fetch_ucirepo(id=14) 
+  
+# data (as pandas dataframes) 
+X = breast_cancer.data.features 
+y = breast_cancer.data.targets 
+  
+# metadata 
+#print(breast_cancer.metadata) 
+  
+# variable information 
+#print(breast_cancer.variables)
+
+##### DERMATOLOGY #####
+
+
+from ucimlrepo import fetch_ucirepo 
+  
+# fetch dataset 
+dermatology = fetch_ucirepo(id=33) 
+  
+# data (as pandas dataframes) 
+X = dermatology.data.features 
+y = dermatology.data.targets 
+  
+# metadata 
+#print(dermatology.metadata) 
+  
+# variable information 
+#print(dermatology.variables) 
+
+
+##### COLUMN VERTEBRAL #####
+
+from ucimlrepo import fetch_ucirepo 
+  
+# fetch dataset 
+vertebral_column = fetch_ucirepo(id=212) 
+  
+# data (as pandas dataframes) 
+X = vertebral_column.data.features 
+y = vertebral_column.data.targets 
+  
+# metadata 
+#print(vertebral_column.metadata) 
+  
+# variable information 
+#print(vertebral_column.variables) 
+
