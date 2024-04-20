@@ -1,72 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from collections import Counter
 from slave import *
-# Função para carregar a base de dados Iris
-def load_iris():
-    from sklearn.datasets import load_iris
-    X, y = load_iris(return_X_y=True)
-    return X, y
 
-# Função para dividir os dados em conjunto de treinamento e teste
-def train_test_split(X, y, test_size=0.3, random_state=None):
-    if random_state is not None:
-        np.random.seed(random_state)
-    indices = np.random.permutation(len(X))
-    test_size = int(len(X) * test_size)
-    test_indices = indices[:test_size]
-    train_indices = indices[test_size:]
-    X_train, X_test = X[train_indices], X[test_indices]
-    y_train, y_test = y[train_indices], y[test_indices]
-    return X_train, X_test, y_train, y_test
-
-# Função para calcular a distância euclidiana entre dois pontos
-def euclidean_distance(x1, x2):
-    return np.sqrt(np.sum((x1 - x2) ** 2))
-
-# Classe para o classificador KNN
-class KNN:
-    def fit(self, X, y):
-        self.X_train = X
-        self.y_train = y
-
-    def predict(self, X, k=3):
-        y_pred = [self._predict(x, k) for x in X]
-        return np.array(y_pred)
-
-    def _predict(self, x, k):
-        distances = [euclidean_distance(x, x_train) for x_train in self.X_train]
-        k_indices = np.argsort(distances)[:k]
-        k_nearest_labels = [self.y_train[i] for i in k_indices]
-        most_common = Counter(k_nearest_labels).most_common(1)
-        return most_common[0][0]
-
-# Classe para o classificador DMC
-class DMC:
-    def fit(self, X, y):
-        self.X_train = X
-        self.y_train = y
-
-    def predict(self, X):
-        y_pred = [self._predict(x) for x in X]
-        return np.array(y_pred)
-
-    def _predict(self, x):
-        distances = [euclidean_distance(x, x_train) for x_train in self.X_train]
-        nearest_index = np.argmin(distances)
-        return self.y_train[nearest_index]
-
-# Função para calcular a acurácia
-def accuracy_score(y_true, y_pred):
-    return np.mean(y_true == y_pred)
-
-# Função para calcular a matriz de confusão
-def confusion_matrix(y_true, y_pred):
-    classes = np.unique(y_true)
-    matrix = np.zeros((len(classes), len(classes)), dtype=int)
-    for i in range(len(y_true)):
-        matrix[y_true[i]][y_pred[i]] += 1
-    return matrix
 
 # Carregar o conjunto de dados Iris
 X, y = load_iris()
