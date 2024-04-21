@@ -1,28 +1,9 @@
 from slave import *
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, confusion_matrix
-from sklearn.model_selection import train_test_split
 
-# Função para plotar a superfície de decisão
-def plot_decision_surface(classifier, X_train, y_train, title):
-    plt.figure(figsize=(8, 6))
-    h = .02  # step size in the mesh
-    x_min, x_max = X_train[:, 0].min() - 1, X_train[:, 0].max() + 1
-    y_min, y_max = X_train[:, 1].min() - 1, X_train[:, 1].max() + 1
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
-                         np.arange(y_min, y_max, h))
-    Z = classifier.predict(np.c_[xx.ravel(), yy.ravel()])
-    Z = Z.reshape(xx.shape)
-    plt.contourf(xx, yy, Z, alpha=0.4)
-    plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, s=20, edgecolor='k')
-    plt.title(title)
-    plt.xlabel('Pelvic Incidence')
-    plt.ylabel('Pelvic Tilt')
-    plt.show()
-
-# Carregar o conjunto de dados vertebral_column
-X, y = load_vertebral_column_uci()
+# Carregar o conjunto de dados artificial
+X, y = generate_artificial_dataset()
 
 # Definir o número de realizações
 num_realizacoes = 25
@@ -71,7 +52,7 @@ melhor_acuracia_naive_bayes = max(acuracias_naive_bayes)
 melhor_desvio_padrao_naive_bayes = np.std(acuracias_naive_bayes)
 
 # Imprimir o nome do dataset
-print("Dataset: Vertebral Column")
+print("Dataset: Artificial")
 
 # Imprimir a melhor acurácia e o desvio padrão para KNN
 print("\nMelhor Acurácia e Desvio Padrão do KNN:")
@@ -83,7 +64,7 @@ media_acuracia_knn = np.mean(acuracias_knn)
 indice_realizacao_proxima_media_knn = np.argmin(np.abs(acuracias_knn - media_acuracia_knn))
 
 # Imprimir a melhor realização para KNN
-print("Melhor Realização KNN:", indice_realizacao_proxima_media_knn)
+print("Melhor Realização para KNN (baseada na acurácia mais próxima da média):", indice_realizacao_proxima_media_knn)
 
 # Dividir novamente os dados para encontrar a realização mais próxima da média para KNN
 X_train_knn, X_test_knn, y_train_knn, y_test_knn = train_test_split(X, y, test_size=0.3, random_state=indice_realizacao_proxima_media_knn)
@@ -99,10 +80,23 @@ print("Matriz de Confusão para KNN (Realização mais próxima da média):")
 print(conf_matrix_knn)
 
 # Plotar a superfície de decisão do classificador KNN
-plot_decision_surface(knn_proximo_media, X_train_knn, y_train_knn, "Dataset - Vertebral Column\nSuperfície de Decisão - KNN")
+plt.figure(figsize=(8, 6))
+h = .02  # step size in the mesh
+x_min, x_max = X_train_knn[:, 0].min() - 1, X_train_knn[:, 0].max() + 1
+y_min, y_max = X_train_knn[:, 1].min() - 1, X_train_knn[:, 1].max() + 1
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                     np.arange(y_min, y_max, h))
+Z = knn_proximo_media.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+plt.contourf(xx, yy, Z, alpha=0.4)
+plt.scatter(X_train_knn[:, 0], X_train_knn[:, 1], c=y_train_knn, s=20, edgecolor='k')
+plt.title("Dataset - Artificial\nSuperfície de Decisão - KNN")
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.show()
 
 # Imprimir a melhor acurácia e o desvio padrão para DMC
-print("\nMelhor Acurácia e Desvio Padrão do DMC:")
+print("Melhor Acurácia e Desvio Padrão do DMC:")
 print("Acurácia:", melhor_acuracia_dmc)
 print("Desvio Padrão:", melhor_desvio_padrao_dmc)
 
@@ -111,7 +105,7 @@ media_acuracia_dmc = np.mean(acuracias_dmc)
 indice_realizacao_proxima_media_dmc = np.argmin(np.abs(acuracias_dmc - media_acuracia_dmc))
 
 # Imprimir a melhor realização para DMC
-print("Melhor Realização DMC:", indice_realizacao_proxima_media_dmc)
+print("Melhor Realização para DMC (baseada na acurácia mais próxima da média):", indice_realizacao_proxima_media_dmc)
 
 # Dividir novamente os dados para encontrar a realização mais próxima da média para DMC
 X_train_dmc, X_test_dmc, y_train_dmc, y_test_dmc = train_test_split(X, y, test_size=0.3, random_state=indice_realizacao_proxima_media_dmc)
@@ -123,14 +117,27 @@ y_pred_dmc_proximo_media = dmc_proximo_media.predict(X_test_dmc[:, :2])
 
 # Calcular e imprimir a matriz de confusão para DMC
 conf_matrix_dmc = confusion_matrix(y_test_dmc, y_pred_dmc_proximo_media)
-print("\nMatriz de Confusão para DMC (Realização mais próxima da média):")
+print("Matriz de Confusão para DMC (Realização mais próxima da média):")
 print(conf_matrix_dmc)
 
 # Plotar a superfície de decisão do classificador DMC
-plot_decision_surface(dmc_proximo_media, X_train_dmc, y_train_dmc, "Dataset - Vertebral Column\nSuperfície de Decisão - DMC")
+plt.figure(figsize=(8, 6))
+h = .02  # step size in the mesh
+x_min, x_max = X_train_dmc[:, 0].min() - 1, X_train_dmc[:, 0].max() + 1
+y_min, y_max = X_train_dmc[:, 1].min() - 1, X_train_dmc[:, 1].max() + 1
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                     np.arange(y_min, y_max, h))
+Z = dmc_proximo_media.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+plt.contourf(xx, yy, Z, alpha=0.4)
+plt.scatter(X_train_dmc[:, 0], X_train_dmc[:, 1], c=y_train_dmc, s=20, edgecolor='k')
+plt.title("Dataset - Artificial\nSuperfície de Decisão - DMC")
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.show()
 
 # Imprimir a melhor acurácia e o desvio padrão para Naive Bayes
-print("\nMelhor Acurácia e Desvio Padrão do Naive Bayes:")
+print("Melhor Acurácia e Desvio Padrão do Naive Bayes:")
 print("Acurácia:", melhor_acuracia_naive_bayes)
 print("Desvio Padrão:", melhor_desvio_padrao_naive_bayes)
 
@@ -139,7 +146,7 @@ media_acuracia_naive_bayes = np.mean(acuracias_naive_bayes)
 indice_realizacao_proxima_media_naive_bayes = np.argmin(np.abs(acuracias_naive_bayes - media_acuracia_naive_bayes))
 
 # Imprimir a melhor realização para Naive Bayes
-print("Melhor Realização Naive Bayes:", indice_realizacao_proxima_media_naive_bayes)
+print("Melhor Realização para Naive Bayes (baseada na acurácia mais próxima da média):", indice_realizacao_proxima_media_naive_bayes)
 
 # Dividir novamente os dados para encontrar a realização mais próxima da média para Naive Bayes
 X_train_naive_bayes, X_test_naive_bayes, y_train_naive_bayes, y_test_naive_bayes = train_test_split(X, y, test_size=0.3, random_state=indice_realizacao_proxima_media_naive_bayes)
@@ -151,14 +158,27 @@ y_pred_naive_bayes_proximo_media = naive_bayes_proximo_media.predict(X_test_naiv
 
 # Calcular e imprimir a matriz de confusão para Naive Bayes
 conf_matrix_naive_bayes = confusion_matrix(y_test_naive_bayes, y_pred_naive_bayes_proximo_media)
-print("\nMatriz de Confusão para Naive Bayes (Realização mais próxima da média):")
+print("Matriz de Confusão para Naive Bayes (Realização mais próxima da média):")
 print(conf_matrix_naive_bayes)
 
 # Plotar a superfície de decisão do classificador Naive Bayes
-plot_decision_surface(naive_bayes_proximo_media, X_train_naive_bayes, y_train_naive_bayes, "Dataset - Vertebral Column\nSuperfície de Decisão - Naive Bayes")
+plt.figure(figsize=(8, 6))
+h = .02  # step size in the mesh
+x_min, x_max = X_train_naive_bayes[:, 0].min() - 1, X_train_naive_bayes[:, 0].max() + 1
+y_min, y_max = X_train_naive_bayes[:, 1].min() - 1, X_train_naive_bayes[:, 1].max() + 1
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                     np.arange(y_min, y_max, h))
+Z = naive_bayes_proximo_media.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+plt.contourf(xx, yy, Z, alpha=0.4)
+plt.scatter(X_train_naive_bayes[:, 0], X_train_naive_bayes[:, 1], c=y_train_naive_bayes, s=20, edgecolor='k')
+plt.title("Dataset - Artificial\nSuperfície de Decisão - Naive Bayes")
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.show()
 
 # Plotar as gaussianas para cada classe e os conjuntos de dados de treinamento e teste
-plt.figure(figsize=(10, 6))  # Reduzindo o tamanho da imagem
+plt.figure(figsize=(12, 8))
 
 # Plotar os pontos de treinamento e teste
 plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=plt.cm.Set1, marker='o', label='Treinamento')
@@ -169,11 +189,11 @@ for label in np.unique(y_train):
     X_class = X_train[y_train == label]
     mean = np.mean(X_class, axis=0)
     cov = np.cov(X_class.T)
-    samples = np.random.multivariate_normal(mean, cov, 100)  # Reduzindo o número de pontos para 100
+    samples = np.random.multivariate_normal(mean, cov, 1000)
     plt.plot(samples[:, 0], samples[:, 1], 'o', alpha=0.2, label=f'Gaussiana Classe {label}')
 
-plt.title('Conjunto de Dados Vertebral Column - Distribuição das Classes e Pontos de Treinamento/Teste')
-plt.xlabel('Pelvic Incidence')
-plt.ylabel('Pelvic Tilt')
+plt.title('Conjunto de Dados Artificial - Distribuição das Classes e Pontos de Treinamento/Teste')
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
 plt.legend()
 plt.show()
