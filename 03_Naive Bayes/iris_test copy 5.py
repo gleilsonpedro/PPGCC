@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
-from scipy.stats import norm
+from scipy.stats import norm, multivariate_normal  # Importando multivariate_normal
 import matplotlib.pyplot as plt
 
 iris = load_iris()
@@ -10,8 +10,12 @@ y = iris.target
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-def compute_likelihood(X, mean, std):
-    likelihood = np.prod(norm.pdf(X, mean, std))
+def compute_likelihood(X, mean, cov):
+    n = X.shape[0]
+    det_cov = np.linalg.det(cov)
+    inv_cov = np.linalg.inv(cov)
+    exponent = -0.5 * np.sum(np.dot(X - mean, inv_cov) * (X - mean), axis=1)
+    likelihood = (2 * np.pi) ** (-n / 2) * det_cov ** (-0.5) * np.exp(exponent)
     return likelihood
 
 class NaiveBayesClassifier:
@@ -19,13 +23,13 @@ class NaiveBayesClassifier:
         self.classes = np.unique(y)
         self.class_probs = {}
         self.mean = {}
-        self.std = {}
+        self.cov = {}
 
         for c in self.classes:
             X_c = X[y == c]
             self.class_probs[c] = len(X_c) / len(X)
             self.mean[c] = np.mean(X_c, axis=0)
-            self.std[c] = np.std(X_c, axis=0)
+            self.cov[c] = np.cov(X_c, rowvar=False)
 
     def predict(self, X):
         predictions = []
@@ -35,7 +39,7 @@ class NaiveBayesClassifier:
             posteriors_per_instance = []
 
             for c in self.classes:
-                likelihood = compute_likelihood(x, self.mean[c], self.std[c])
+                likelihood = compute_likelihood(np.atleast_2d(x), self.mean[c], self.cov[c])
                 posterior = self.class_probs[c] * likelihood
                 posteriors_per_instance.append(posterior)
 
@@ -131,8 +135,8 @@ def plot_decision_surface(clf, X_train, y_train, title):
     # Plotagem das fronteiras de decisão
     plt.contourf(xx, yy, Z, alpha=0.8)
     plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, edgecolors='k')
-    plt.xlabel('Feature 1')
-    plt.ylabel('Feature 2')
+    plt.xlabel(iris.feature_names[0])
+    plt.ylabel(iris.feature_names[1])
     plt.title(title)
     plt.show()
 
@@ -145,19 +149,26 @@ def plot_gaussian_over_data(X_train, y_train, X_test, y_test, title):
 
         # Plot Gaussian distribution for training data
         mean = np.mean(X_class_train, axis=0)
-        std = np.std(X_class_train, axis=0)
+        cov = np.cov(X_class_train, rowvar=False)
         plt.scatter(X_class_train[:, 0], X_class_train[:, 1], label=f'Train Class {class_name}')
-        plt.scatter(mean[0], mean[1], marker='x', color='black', label=f'Mean Train Class {class_name}')
+        plot_gaussian_2d(mean, cov)
 
         # Plot Gaussian distribution for test data
         plt.scatter(X_class_test[:, 0], X_class_test[:, 1], label=f'Test Class {class_name}')
         plt.scatter(mean[0], mean[1], marker='o', color='red', label=f'Mean Test Class {class_name}')
 
-    plt.xlabel('Feature 1')
-    plt.ylabel('Feature 2')
+    plt.xlabel(iris.feature_names[0])
+    plt.ylabel(iris.feature_names[1])
     plt.title(title)
     plt.legend()
     plt.show()
+
+def plot_gaussian_2d(mean, cov, n_std=1):
+    x, y = np.meshgrid(np.linspace(mean[0] - 3 * np.sqrt(cov[0, 0]), mean[0] + 3 * np.sqrt(cov[0, 0]), 100),
+                       np.linspace(mean[1] - 3 * np.sqrt(cov[1, 1]), mean[1] + 3 * np.sqrt(cov[1, 1]), 100))
+    pos = np.dstack((x, y)).reshape(-1, 2)
+    rv = multivariate_normal(mean, cov)
+    plt.contour(x, y, rv.pdf(pos).reshape(100, 100), levels=[rv.pdf(mean.reshape(1, -1)) * np.exp(-0.5)], colors='black', alpha=0.5)
 
 # Instanciando e treinando o classificador Naive Bayes
 nb_classifier = NaiveBayesClassifier()
@@ -177,5 +188,5 @@ plt.show()
 # Plotando a superfície de decisão
 plot_decision_surface(nb_classifier, X_train, y_train, "Superfície de Decisão - Naive Bayes")
 
-# Plotando as gaussianas sobre os dados para cada classe
+# Plotando as gaussianas sobre os dados para cada uma das classes
 plot_gaussian_over_data(X_train, y_train, X_test, y_test, "Distribuição Gaussiana sobre os Dados")

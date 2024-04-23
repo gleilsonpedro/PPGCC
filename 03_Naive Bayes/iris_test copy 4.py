@@ -131,8 +131,8 @@ def plot_decision_surface(clf, X_train, y_train, title):
     # Plotagem das fronteiras de decisão
     plt.contourf(xx, yy, Z, alpha=0.8)
     plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, edgecolors='k')
-    plt.xlabel('Feature 1')
-    plt.ylabel('Feature 2')
+    plt.xlabel(iris.feature_names[0])
+    plt.ylabel(iris.feature_names[1])
     plt.title(title)
     plt.show()
 
@@ -153,8 +153,8 @@ def plot_gaussian_over_data(X_train, y_train, X_test, y_test, title):
         plt.scatter(X_class_test[:, 0], X_class_test[:, 1], label=f'Test Class {class_name}')
         plt.scatter(mean[0], mean[1], marker='o', color='red', label=f'Mean Test Class {class_name}')
 
-    plt.xlabel('Feature 1')
-    plt.ylabel('Feature 2')
+    plt.xlabel(iris.feature_names[0])
+    plt.ylabel(iris.feature_names[1])
     plt.title(title)
     plt.legend()
     plt.show()
@@ -170,12 +170,12 @@ plt.figure(figsize=(10, 6))
 plt.bar(range(len(best_class_posteriors)), list(best_class_posteriors.values()))
 plt.xlabel('Classes')
 plt.ylabel('Probabilidade Média a Posteriori')
-plt.title('Probabilidade Média a Posteriori para Cada Classe')
+plt.title('Probabilidade Média a Posteriori para Cada Classe - Dataset Iris')
 plt.xticks(range(len(best_class_posteriors)), iris.target_names)
 plt.show()
 
 # Plotando a superfície de decisão
-plot_decision_surface(nb_classifier, X_train, y_train, "Superfície de Decisão - Naive Bayes")
+plot_decision_surface(nb_classifier, X_train, y_train, "Superfície de Decisão - Naive Bayes - Dataset Iris")
 
 # Plotando as gaussianas sobre os dados para cada classe
-plot_gaussian_over_data(X_train, y_train, X_test, y_test, "Distribuição Gaussiana sobre os Dados")
+plot_gaussian_over_data(X_train, y_train, X_test, y_test, "Distribuição Gaussiana sobre os Dados - Dataset Iris")
