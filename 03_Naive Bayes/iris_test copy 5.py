@@ -1,21 +1,15 @@
 import numpy as np
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
-from scipy.stats import norm, multivariate_normal  # Importando multivariate_normal
+from scipy.stats import norm
 import matplotlib.pyplot as plt
 
 iris = load_iris()
 X = iris.data  
 y = iris.target  
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-def compute_likelihood(X, mean, cov):
-    n = X.shape[0]
-    det_cov = np.linalg.det(cov)
-    inv_cov = np.linalg.inv(cov)
-    exponent = -0.5 * np.sum(np.dot(X - mean, inv_cov) * (X - mean), axis=1)
-    likelihood = (2 * np.pi) ** (-n / 2) * det_cov ** (-0.5) * np.exp(exponent)
+def compute_likelihood(X, mean, std):
+    likelihood = np.prod(norm.pdf(X, mean, std))
     return likelihood
 
 class NaiveBayesClassifier:
@@ -23,13 +17,13 @@ class NaiveBayesClassifier:
         self.classes = np.unique(y)
         self.class_probs = {}
         self.mean = {}
-        self.cov = {}
+        self.std = {}
 
         for c in self.classes:
             X_c = X[y == c]
             self.class_probs[c] = len(X_c) / len(X)
             self.mean[c] = np.mean(X_c, axis=0)
-            self.cov[c] = np.cov(X_c, rowvar=False)
+            self.std[c] = np.std(X_c, axis=0)
 
     def predict(self, X):
         predictions = []
@@ -39,7 +33,7 @@ class NaiveBayesClassifier:
             posteriors_per_instance = []
 
             for c in self.classes:
-                likelihood = compute_likelihood(np.atleast_2d(x), self.mean[c], self.cov[c])
+                likelihood = compute_likelihood(x, self.mean[c], self.std[c])
                 posterior = self.class_probs[c] * likelihood
                 posteriors_per_instance.append(posterior)
 
@@ -53,7 +47,7 @@ class NaiveBayesClassifier:
             for i, p in enumerate(posterior):
                 class_posteriors[self.classes[i]].append(p)
 
-        mean_class_posteriors = {c: np.mean(class_posteriors[c]) for c in self.classes}
+        mean_class_posteriors = {c: np.mean(class_posteriors[c], axis=0) for c in self.classes}
         return predictions, mean_class_posteriors
     
 def accuracy_score(y_true, y_pred):
@@ -135,40 +129,20 @@ def plot_decision_surface(clf, X_train, y_train, title):
     # Plotagem das fronteiras de decisão
     plt.contourf(xx, yy, Z, alpha=0.8)
     plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, edgecolors='k')
-    plt.xlabel(iris.feature_names[0])
-    plt.ylabel(iris.feature_names[1])
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
     plt.title(title)
     plt.show()
 
-def plot_gaussian_over_data(X_train, y_train, X_test, y_test, title):
-    plt.figure(figsize=(12, 8))
-
-    for i, class_name in enumerate(np.unique(y_train)):
-        X_class_train = X_train[y_train == class_name]
-        X_class_test = X_test[y_test == class_name]
-
-        # Plot Gaussian distribution for training data
-        mean = np.mean(X_class_train, axis=0)
-        cov = np.cov(X_class_train, rowvar=False)
-        plt.scatter(X_class_train[:, 0], X_class_train[:, 1], label=f'Train Class {class_name}')
-        plot_gaussian_2d(mean, cov)
-
-        # Plot Gaussian distribution for test data
-        plt.scatter(X_class_test[:, 0], X_class_test[:, 1], label=f'Test Class {class_name}')
-        plt.scatter(mean[0], mean[1], marker='o', color='red', label=f'Mean Test Class {class_name}')
-
-    plt.xlabel(iris.feature_names[0])
-    plt.ylabel(iris.feature_names[1])
-    plt.title(title)
-    plt.legend()
+# Função para plotar a probabilidade a posteriori de cada classe da melhor realização em um gráfico de barras
+def plot_posterior_probabilities(best_class_posteriors):
+    plt.figure(figsize=(10, 6))
+    plt.bar(range(len(best_class_posteriors)), list(best_class_posteriors.values()))
+    plt.xlabel('Classes')
+    plt.ylabel('Probabilidade Posteriori')
+    plt.title('Probabilidade Posteriori para Cada Classe (Melhor Realização)')
+    plt.xticks(range(len(best_class_posteriors)), iris.target_names)
     plt.show()
-
-def plot_gaussian_2d(mean, cov, n_std=1):
-    x, y = np.meshgrid(np.linspace(mean[0] - 3 * np.sqrt(cov[0, 0]), mean[0] + 3 * np.sqrt(cov[0, 0]), 100),
-                       np.linspace(mean[1] - 3 * np.sqrt(cov[1, 1]), mean[1] + 3 * np.sqrt(cov[1, 1]), 100))
-    pos = np.dstack((x, y)).reshape(-1, 2)
-    rv = multivariate_normal(mean, cov)
-    plt.contour(x, y, rv.pdf(pos).reshape(100, 100), levels=[rv.pdf(mean.reshape(1, -1)) * np.exp(-0.5)], colors='black', alpha=0.5)
 
 # Instanciando e treinando o classificador Naive Bayes
 nb_classifier = NaiveBayesClassifier()
@@ -176,17 +150,11 @@ nb_classifier = NaiveBayesClassifier()
 # Obtendo os resultados da melhor realização
 mean_acc, std_dev_acc, best_realization_idx, best_class_posteriors = perform_realizations(nb_classifier, X, y)
 
-# Plotando as probabilidades médias a posteriori para cada classe
-plt.figure(figsize=(10, 6))
-plt.bar(range(len(best_class_posteriors)), list(best_class_posteriors.values()))
-plt.xlabel('Classes')
-plt.ylabel('Probabilidade Média a Posteriori')
-plt.title('Probabilidade Média a Posteriori para Cada Classe')
-plt.xticks(range(len(best_class_posteriors)), iris.target_names)
-plt.show()
+# Plotando a probabilidade a posteriori de cada classe da melhor realização
+plot_posterior_probabilities(best_class_posteriors)
+
+# Obtendo conjuntos de treinamento e teste da melhor realização
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=best_realization_idx)
 
 # Plotando a superfície de decisão
 plot_decision_surface(nb_classifier, X_train, y_train, "Superfície de Decisão - Naive Bayes")
-
-# Plotando as gaussianas sobre os dados para cada uma das classes
-plot_gaussian_over_data(X_train, y_train, X_test, y_test, "Distribuição Gaussiana sobre os Dados")

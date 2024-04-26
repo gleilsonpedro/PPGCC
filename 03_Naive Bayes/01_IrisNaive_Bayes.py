@@ -96,6 +96,8 @@ means, stds = fit_naive_bayes(X_train[:, :2], y_train)
 y_pred_naive_bayes_proximo_media = predict_naive_bayes(X_test[:, :2], means, stds)
 conf_matrix_naive_bayes = confusion_matrix(y_test, y_pred_naive_bayes_proximo_media)
 
+
+
 # Imprimir informações
 print("Dataset: Iris")
 
