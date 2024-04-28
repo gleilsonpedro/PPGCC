@@ -14,35 +14,38 @@ def calculate_metrics(y_true, y_pred):
         conf_matrix[true, pred] += 1
     return accuracy, np.std(y_pred == y_true), conf_matrix
 
-def load_vertebral_column_uci():
-    # URL do arquivo ZIP
-    url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00212/vertebral_column_data.zip"
-    # Caminho local para salvar o arquivo ZIP
-    zip_path = "vertebral_column_data.zip"
-    # Caminho local para o arquivo de dados extraído
-    data_path = "column_3C.dat"
+# Definição da função para gerar o conjunto de dados artificial
+def load_artificial_dataset():
+    np.random.seed(42)
 
-    # Baixar o arquivo ZIP se ainda não foi baixado
-    if not os.path.exists(zip_path):
-        r = requests.get(url)
-        with open(zip_path, "wb") as f:
-            f.write(r.content)
+    # Parâmetros para a Classe 1
+    mean1 = [1, 1]
+    cov1 = [[0.1, 0], [0, 0.1]]
+    class1 = np.random.multivariate_normal(mean1, cov1, 10)
 
-    # Extrair o arquivo de dados do ZIP se ainda não foi extraído
-    if not os.path.exists(data_path):
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall()
+    # Parâmetros para a Classe 0
+    mean2 = [0, 0]
+    cov2 = [[0.1, 0], [0, 0.1]]
+    class0_1 = np.random.multivariate_normal(mean2, cov2, 10)
 
-    # Ler o arquivo de dados
-    column_names = ['pelvic_incidence', 'pelvic_tilt', 'lumbar_lordosis_angle', 'sacral_slope', 'pelvic_radius', 'degree_spondylolisthesis', 'class']
-    vertebral_data = pd.read_csv(data_path, header=None, sep=' ', names=column_names)
-    X = vertebral_data.iloc[:, :-1].values
-    y = vertebral_data.iloc[:, -1].replace({'DH': 0, 'SL': 1, 'NO': 2}).values
+    mean3 = [0, 1]
+    cov3 = [[0.1, 0], [0, 0.1]]
+    class0_2 = np.random.multivariate_normal(mean3, cov3, 10)
+
+    mean4 = [1, 0]
+    cov4 = [[0.1, 0], [0, 0.1]]
+    class0_3 = np.random.multivariate_normal(mean4, cov4, 10)
+
+    class0 = np.vstack((class0_1, class0_2, class0_3))
+
+    # Combinar as classes
+    X = np.vstack((class1, class0))
+    y = np.array([1]*10 + [0]*30)
 
     return X, y
 
 # Load the Vertebral Column dataset
-X, y = load_vertebral_column_uci()
+X, y = load_artificial_dataset()
 
 
 # Holdout com 20 realizações
@@ -58,17 +61,22 @@ for _ in range(n_realizations):
     class_means = [np.mean(X_train[y_train == i], axis=0) for i in range(3)]
     class_variances = [np.var(X_train[y_train == i], axis=0) for i in range(3)]
 
+    
     # Função de previsão
-    def predict(X):
+    def predict(X, means, variances, priors):
         predictions = []
+        n_classes = len(priors)  # Número de classes dinamicamente determinado
         for x in X:
-            class_scores = [np.log(class_priors[i]) - 0.5 * np.sum(np.log(2 * np.pi * class_variances[i]))
-                            - 0.5 * np.sum(((x - class_means[i]) ** 2) / class_variances[i]) for i in range(3)]
+            class_scores = [np.log(priors[i]) - 0.5 * np.sum(np.log(2 * np.pi * variances[i]))
+                            - 0.5 * np.sum(((x - means[i][:2]) ** 2) / variances[i][:2]) for i in range(n_classes)]
             predictions.append(np.argmax(class_scores))
         return predictions
 
+
+   
     # Fazer previsões no conjunto de teste
-    y_pred = predict(X_test)
+    y_pred = predict(X_test, class_means, class_variances, class_priors)
+
 
     # Calcular métricas
     accuracy, std_dev, conf_matrix = calculate_metrics(y_test, y_pred)
