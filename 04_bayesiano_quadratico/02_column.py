@@ -131,9 +131,9 @@ y_plot = y_train
 # Plotagem
 fig, ax = plt.subplots(figsize=(8, 6))
 plot_decision_surface(X_plot, y_plot, class_means, class_variances, class_priors, ax)
-plt.xlabel('Sepal Length')
-plt.ylabel('Sepal Width')
-plt.title('Dataset - IRIS\nSuperfície de Decisão - Melhor Realização')
+plt.xlabel('')
+plt.ylabel('')
+plt.title('Dataset - Vertebral Column\nSuperfície de Decisão - Melhor Realização')
 plt.show()
 
 
@@ -162,7 +162,7 @@ def plot_dataset(X_train, y_train, X_test, y_test):
     plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap='viridis', marker='x', label='Teste', edgecolors='k', s=80)
     plt.xlabel('Comprimento da Sépala')
     plt.ylabel('Largura da Sépala')
-    plt.title('Dataset - IRIS\nConjuntos de Dados de Treinamento e Teste')
+    plt.title('Dataset - Vertebral Column\nConjuntos de Dados de Treinamento e Teste')
 
     # Adicionando uma legenda personalizada com nomes de espécies
     custom_lines = [Line2D([0], [0], marker='o', color='w', label=f'{iris.target_names[i]} (Treinamento)', markerfacecolor=train_colors[i], markersize=10) for i in range(3)]

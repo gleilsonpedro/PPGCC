@@ -1,144 +1,130 @@
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.datasets import load_iris
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 
-# Função para calcular métricas
+# Função para calcular a média e a matriz de covariância de cada classe
+def calculate_class_statistics(X, y):
+    class_means = []
+    class_covariances = []
+    for i in range(3):
+        X_class = X[y == i]
+        class_means.append(np.mean(X_class, axis=0))
+        class_covariances.append(np.cov(X_class.T))
+    return class_means, class_covariances
+
+# Função para calcular a função discriminante quadrática
+def quadratic_discriminant_function(x, class_mean, class_covariance):
+    inv_covariance = np.linalg.inv(class_covariance)
+    det_covariance = np.linalg.det(class_covariance)
+    constant_term = -0.5 * np.log(det_covariance)
+    quadratic_term = -0.5 * np.dot(np.dot((x - class_mean).T, inv_covariance), (x - class_mean))
+    return quadratic_term + constant_term
+
+# Função para fazer previsões usando a função discriminante quadrática
+def predict_quadratic(X, class_means, class_covariances, class_priors):
+    predictions = []
+    for x in X:
+        discriminant_values = [quadratic_discriminant_function(x, class_means[i], class_covariances[i]) for i in range(3)]
+        predictions.append(np.argmax(discriminant_values))
+    return predictions
+
+# Gerar conjunto de dados artificial
+def generate_artificial_dataset():
+    np.random.seed(42)
+    class0 = np.random.multivariate_normal([1, 1], [[0.1, 0], [0, 0.1]], 8)
+    class1 = np.random.multivariate_normal([2, 2], [[0.1, 0], [0, 0.1]], 8)
+    class2 = np.random.multivariate_normal([3, 3], [[0.1, 0], [0, 0.1]], 7)
+    X = np.vstack([class0, class1, class2])
+    y = np.array([0]*8 + [1]*8 + [2]*7)
+    return X, y
+
+# Função para calcular métricas de classificação
 def calculate_metrics(y_true, y_pred):
     accuracy = np.mean(y_true == y_pred)
-    conf_matrix = np.zeros((3, 3))
+    confusion_matrix = np.zeros((3, 3), dtype=int)
     for true, pred in zip(y_true, y_pred):
-        conf_matrix[true, pred] += 1
-    return accuracy, np.std(y_pred == y_true), conf_matrix
+        confusion_matrix[true, pred] += 1
+    return accuracy, confusion_matrix
 
-# Load the Iris dataset
-iris = load_iris()
-X, y = iris.data, iris.target
+# Gerar dataset artificial
+X, y = generate_artificial_dataset()
 
 # Holdout com 20 realizações
 n_realizations = 20
 accuracies = []
+confusion_matrices = []
 for _ in range(n_realizations):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=None)
+    # Dividir conjunto de dados em treino e teste
+    np.random.shuffle(X)
+    np.random.shuffle(y)
+    X_train, X_test = X[:15], X[15:]
+    y_train, y_test = y[:15], y[15:]
 
-    # Calcular class priors
+    # Calcular priors, médias e covariâncias de classe
     class_priors = np.bincount(y_train) / len(y_train)
+    class_means, class_covariances = calculate_class_statistics(X_train, y_train)
 
-    # Calcular class means e variances
-    class_means = [np.mean(X_train[y_train == i], axis=0) for i in range(3)]
-    class_variances = [np.var(X_train[y_train == i], axis=0) for i in range(3)]
+    # Fazer previsões no conjunto de teste usando a função discriminante quadrática
+    y_pred = predict_quadratic(X_test, class_means, class_covariances, class_priors)
 
-    # Função de previsão
-    def predict(X):
-        predictions = []
-        for x in X:
-            class_scores = [np.log(class_priors[i]) - 0.5 * np.sum(np.log(2 * np.pi * class_variances[i]))
-                            - 0.5 * np.sum(((x - class_means[i]) ** 2) / class_variances[i]) for i in range(3)]
-            predictions.append(np.argmax(class_scores))
-        return predictions
-
-    # Fazer previsões no conjunto de teste
-    y_pred = predict(X_test)
-
-    # Calcular métricas
-    accuracy, std_dev, conf_matrix = calculate_metrics(y_test, y_pred)
-    accuracies.append((accuracy, std_dev, conf_matrix, X_train))
+    # Calcular métricas de classificação
+    accuracy, confusion_matrix = calculate_metrics(y_test, y_pred)
+    accuracies.append(accuracy)
+    confusion_matrices.append(confusion_matrix)
 
 # Calcular média e desvio padrão das acurácias
-mean_accuracies = np.mean([acc[0] for acc in accuracies])
-std_accuracies = np.std([acc[0] for acc in accuracies])
+mean_accuracy = np.mean(accuracies)
+std_dev_accuracy = np.std(accuracies)
 
 # Encontrar a melhor realização com base na acurácia mais próxima da média
-best_realization_index = np.argmin(np.abs([acc[0] - mean_accuracies for acc in accuracies]))
-best_accuracy, best_std_dev, best_conf_matrix, best_X_train = accuracies[best_realization_index]
+best_realization_index = np.argmin(np.abs(np.array(accuracies) - mean_accuracy))
+best_accuracy = accuracies[best_realization_index]
+best_confusion_matrix = confusion_matrices[best_realization_index]
 
-# Imprimir os resultados da melhor realização
-
-print(f"Dataset : IRIS\n")
+# Imprimir resultados
+print("Dataset: Artificial\n")
 print(f"Melhor Realização: {best_realization_index}")
 print(f"Acurácia: {best_accuracy:.4f}")
-print(f"Desvio Padrão: {best_std_dev:.4f}")
+print(f"Desvio Padrão: {std_dev_accuracy:.4f}")
 print("Matriz de Confusão:")
-print(best_conf_matrix)
-print("Covariance Matrix (Complete):")
-print(np.cov(best_X_train.T))
-print("Covariance Matrix (Diagonal):")
-print(np.diag(np.diag(np.cov(best_X_train.T))))
-print("Covariance Matrix (Equal):")
-print(np.mean(np.cov(best_X_train.T)) * np.eye(best_X_train.shape[1]))
+print(best_confusion_matrix)
 
-#PLOTS
+# Imprimir matrizes de covariância
+print("\nMatriz de Covariância Completa:")
+for i, covariance in enumerate(class_covariances):
+    print(f"Classe {i}:")
+    print(covariance)
 
-import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib.colors import ListedColormap
+print("\nMatriz de Covariância Diagonal:")
+for i, covariance in enumerate(class_covariances):
+    print(f"Classe {i}:")
+    print(np.diag(np.diag(covariance)))
 
-# Função para plotar a superfície de decisão
-def plot_decision_surface(X, y, means, variances, priors, ax):
-    h = 0.02  # Passo do grid
+print("\nMatriz de Covariância Equal:")
+equal_covariance = np.mean(np.array(class_covariances), axis=0)
+for i, _ in enumerate(class_covariances):
+    print(f"Classe {i}:")
+    print(equal_covariance)
+
+# Plotar superfície de decisão
+def plot_decision_surface(X, y, class_means, class_covariances):
+    h = 0.02
     x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
     y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
     xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
-    Z = predict(np.c_[xx.ravel(), yy.ravel()], means, variances, priors)
+    Z = predict_quadratic(np.c_[xx.ravel(), yy.ravel()], class_means, class_covariances, class_priors)
     Z = np.array(Z).reshape(xx.shape)
     cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
-    ax.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.8)
-    ax.scatter(X[:, 0], X[:, 1], c=y, edgecolor='k', s=20)
+    plt.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.8)
+    plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, edgecolor='k', s=20, label='Training Data')
+    plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, marker='x', label='Test Data', edgecolor='black')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.title('Artificial Dataset - Decision Surface')
+    plt.legend()
 
-# Função de previsão
-def predict(X, means, variances, priors):
-    predictions = []
-    for x in X:
-        class_scores = [np.log(priors[i]) - 0.5 * np.sum(np.log(2 * np.pi * variances[i]))
-                        - 0.5 * np.sum(((x - means[i][:2]) ** 2) / variances[i][:2]) for i in range(3)]
-        predictions.append(np.argmax(class_scores))
-    return predictions
+# Plotar superfície de decisão para a melhor realização
+plt.figure(figsize=(8, 6))
+plot_decision_surface(X, y, class_means, class_covariances)
 
-# Dados para plotagem
-X_plot = best_X_train[:, :2]  # Usando apenas as duas primeiras características
-y_plot = y_train
-
-# Plotagem
-fig, ax = plt.subplots(figsize=(8, 6))
-plot_decision_surface(X_plot, y_plot, class_means, class_variances, class_priors, ax)
-plt.xlabel('Sepal Length')
-plt.ylabel('Sepal Width')
-plt.title('Dataset - IRIS\nSuperfície de Decisão - Melhor Realização')
 plt.show()
-
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-
-# Load the Iris dataset
-from sklearn.datasets import load_iris
-iris = load_iris()
-X, y = iris.data, iris.target
-
-# Split the data into training and test sets
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
-# Define custom colors for training and test points
-train_colors = ['gold', 'limegreen', 'royalblue']
-test_color = 'black'
-
-def plot_dataset(X_train, y_train, X_test, y_test):
-    plt.figure(figsize=(10, 6))
-    for i in range(3):
-        plt.scatter(X_train[y_train == i][:, 0], X_train[y_train == i][:, 1], c=train_colors[i], marker='o', label=f'{iris.target_names[i]} (Treinamento)', edgecolors='k', s=80)
-    plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap='viridis', marker='x', label='Teste', edgecolors='k', s=80)
-    plt.xlabel('Comprimento da Sépala')
-    plt.ylabel('Largura da Sépala')
-    plt.title('Dataset - IRIS\nConjuntos de Dados de Treinamento e Teste')
-
-    # Adicionando uma legenda personalizada com nomes de espécies
-    custom_lines = [Line2D([0], [0], marker='o', color='w', label=f'{iris.target_names[i]} (Treinamento)', markerfacecolor=train_colors[i], markersize=10) for i in range(3)]
-    custom_lines.append(Line2D([0], [0], marker='x', color='black', label='Teste', markersize=10))
-    plt.legend(handles=custom_lines, loc='upper right')
-
-    plt.show()
-
-# Usar a função para plotar os conjuntos de dados de treinamento e teste
-plot_dataset(X_train, y_train, X_test, y_test)
